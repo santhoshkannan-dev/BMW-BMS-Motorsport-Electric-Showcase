@@ -50,11 +50,11 @@ const ThreeCarCanvas = dynamic(() => import("@/components/ThreeCarCanvas"), {
 export default function Home() {
   // Car customizer configuration state
   const [config, setConfig] = useState<CarConfig>({
-    paintColor: "#114b3d", // Isle of Man Green
-    paintName: "Isle of Man Green",
+    paintColor: "#8c97a7", // Liquid Titanium Silver matching reference photo
+    paintName: "Liquid Titanium Silver",
     caliperColor: "#e5b95c", // M Gold Ceramic
-    rimColor: "#a1a8b3", // Bicolor Alloy
-    rimName: "Bicolor Star-Spoke 813M",
+    rimColor: "#1a1c20", // Jet Black Forged matching reference rims
+    rimName: "Jet Black Forged 863M",
     driveMode: "comfort",
     headlightsOn: true,
     activeHotspot: null,

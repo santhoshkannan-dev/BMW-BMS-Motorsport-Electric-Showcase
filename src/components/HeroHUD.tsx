@@ -29,13 +29,13 @@ interface HeroHUDProps {
 }
 
 export const PAINT_COLORS = [
+  { name: "Liquid Titanium Silver", hex: "#8c97a7", badge: "Vision Concept" },
   { name: "Isle of Man Green", hex: "#114b3d", badge: "Metallic" },
   { name: "Frozen Deep Grey", hex: "#2b2e35", badge: "Matte" },
   { name: "Marina Bay Blue", hex: "#0062c4", badge: "M Exclusive" },
   { name: "Tanzanite Blue II", hex: "#0c2044", badge: "Individual" },
   { name: "Toronto Red", hex: "#c3112c", badge: "Metallic" },
   { name: "Sao Paulo Yellow", hex: "#e5ea1f", badge: "High-Gloss" },
-  { name: "Alpine White", hex: "#e6ecf2", badge: "Non-Metallic" },
   { name: "Black Sapphire", hex: "#0f1115", badge: "Metallic" },
 ];
 

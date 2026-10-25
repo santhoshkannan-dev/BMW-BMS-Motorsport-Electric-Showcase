@@ -40,29 +40,31 @@ export default function ThreeCarCanvas({
   const caliperMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
   const rimMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
   const headlightMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
+  const grilleGlowMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const underglowLightRef = useRef<THREE.PointLight | null>(null);
+  const ceilingLightsRef = useRef<THREE.Group | null>(null);
   const warpParticlesRef = useRef<THREE.Points | null>(null);
   const realCarGroupRef = useRef<THREE.Group | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
 
-  // Camera animation target & position lerping
-  const targetCamPos = useRef<THREE.Vector3>(new THREE.Vector3(5.2, 2.2, 5.4));
-  const targetCamLook = useRef<THREE.Vector3>(new THREE.Vector3(0, 0.75, 0));
-  const currentCamLook = useRef<THREE.Vector3>(new THREE.Vector3(0, 0.75, 0));
+  // Default camera target - Front 3/4 low cinematic angle matching the reference studio photo
+  const targetCamPos = useRef<THREE.Vector3>(new THREE.Vector3(3.6, 1.45, 3.8));
+  const targetCamLook = useRef<THREE.Vector3>(new THREE.Vector3(0, 0.72, 0.3));
+  const currentCamLook = useRef<THREE.Vector3>(new THREE.Vector3(0, 0.72, 0.3));
 
   // Mouse orbit controls
   const isDragging = useRef(false);
   const prevMouse = useRef({ x: 0, y: 0 });
-  const orbitSpherical = useRef({ radius: 7.5, theta: 0.85, phi: 1.25 });
+  const orbitSpherical = useRef({ radius: 5.4, theta: 0.76, phi: 1.32 });
   const isUserInteracting = useRef(false);
   const userInteractTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // 3D Hotspot world coordinates on the real BMW M4
+  // 3D Hotspot world coordinates on the BMW M4 / Vision M
   const hotspotPositions = [
-    { id: 0, title: "BMW Laserlight", pos: new THREE.Vector3(0.78, 0.72, 2.15), desc: "Adaptive Matrix LED with 600m high-beam range" },
-    { id: 1, title: "Iconic Kidney Grille", pos: new THREE.Vector3(0, 0.68, 2.38), desc: "Signature frameless active aerodynamic double-kidney grille" },
+    { id: 0, title: "BMW Laserlight", pos: new THREE.Vector3(0.78, 0.72, 2.15), desc: "Adaptive Matrix LED with 600m high-beam laser range" },
+    { id: 1, title: "Illuminated Contour Grille", pos: new THREE.Vector3(0, 0.68, 2.38), desc: "Signature frameless active aerodynamic double-kidney grille with neon cyan illumination" },
     { id: 2, title: "M Carbon Ceramic Brakes", pos: new THREE.Vector3(1.05, 0.44, 1.4), desc: "400mm perforated ceramic composite discs with 6-piston calipers" },
     { id: 3, title: "Carbon Fiber Aerokit", pos: new THREE.Vector3(0, 1.45, 0.05), desc: "Lightweight CFR carbon roof lowering center of gravity" },
     { id: 4, title: "M Quad Exhaust & Diffuser", pos: new THREE.Vector3(0, 0.6, -2.3), desc: "Motorsport rear diffuser with dual twin chrome exhaust outlets" },
@@ -74,39 +76,40 @@ export default function ThreeCarCanvas({
   useEffect(() => {
     switch (config.cameraPreset) {
       case "showcase":
-        targetCamPos.current.set(5.2, 2.1, 5.4);
-        targetCamLook.current.set(0, 0.75, 0);
-        orbitSpherical.current = { radius: 7.5, theta: 0.85, phi: 1.25 };
+        // Cinematic 3/4 hero view matching reference image
+        targetCamPos.current.set(3.6, 1.45, 3.8);
+        targetCamLook.current.set(0, 0.72, 0.3);
+        orbitSpherical.current = { radius: 5.4, theta: 0.76, phi: 1.32 };
         break;
       case "front":
-        targetCamPos.current.set(0, 1.1, 5.2);
-        targetCamLook.current.set(0, 0.7, 1.5);
-        orbitSpherical.current = { radius: 5.2, theta: 0.0, phi: 1.36 };
+        targetCamPos.current.set(0, 1.05, 4.6);
+        targetCamLook.current.set(0, 0.68, 1.5);
+        orbitSpherical.current = { radius: 4.6, theta: 0.0, phi: 1.38 };
         break;
       case "side":
-        targetCamPos.current.set(6.4, 1.3, 0);
-        targetCamLook.current.set(0, 0.7, 0);
-        orbitSpherical.current = { radius: 6.4, theta: Math.PI / 2, phi: 1.35 };
+        targetCamPos.current.set(6.2, 1.25, 0);
+        targetCamLook.current.set(0, 0.68, 0);
+        orbitSpherical.current = { radius: 6.2, theta: Math.PI / 2, phi: 1.35 };
         break;
       case "rear":
-        targetCamPos.current.set(-3.5, 1.5, -5.2);
-        targetCamLook.current.set(0, 0.75, -1.0);
-        orbitSpherical.current = { radius: 6.2, theta: 3.8, phi: 1.32 };
+        targetCamPos.current.set(-3.2, 1.45, -4.8);
+        targetCamLook.current.set(0, 0.72, -1.0);
+        orbitSpherical.current = { radius: 5.8, theta: 3.8, phi: 1.32 };
         break;
       case "wheel":
-        targetCamPos.current.set(2.4, 0.55, 1.7);
+        targetCamPos.current.set(2.2, 0.52, 1.6);
         targetCamLook.current.set(1.05, 0.42, 1.35);
-        orbitSpherical.current = { radius: 2.8, theta: 0.95, phi: 1.42 };
+        orbitSpherical.current = { radius: 2.6, theta: 0.95, phi: 1.42 };
         break;
       case "top":
-        targetCamPos.current.set(0.1, 8.2, 0.1);
+        targetCamPos.current.set(0.1, 7.8, 0.1);
         targetCamLook.current.set(0, 0.6, 0);
-        orbitSpherical.current = { radius: 8.2, theta: 0.1, phi: 0.1 };
+        orbitSpherical.current = { radius: 7.8, theta: 0.1, phi: 0.1 };
         break;
     }
   }, [config.cameraPreset]);
 
-  // Update Paint Color dynamically
+  // Update Paint Color dynamically across all body panels
   useEffect(() => {
     const color = new THREE.Color(config.paintColor);
     carBodyMaterialsRef.current.forEach((mat) => {
@@ -133,12 +136,12 @@ export default function ThreeCarCanvas({
     });
   }, [config.rimColor]);
 
-  // Update Headlights & Underglow
+  // Update Headlights, Illuminated Grille & Neon Underglow
   useEffect(() => {
     headlightMaterialsRef.current.forEach((mat) => {
       if (config.headlightsOn) {
         mat.emissive.set(0x00f0ff);
-        mat.emissiveIntensity = 3.5;
+        mat.emissiveIntensity = 4.0;
       } else {
         mat.emissive.set(0x000000);
         mat.emissiveIntensity = 0;
@@ -146,23 +149,34 @@ export default function ThreeCarCanvas({
       mat.needsUpdate = true;
     });
 
+    if (grilleGlowMaterialRef.current) {
+      if (config.headlightsOn) {
+        grilleGlowMaterialRef.current.emissive.set(0x00f0ff);
+        grilleGlowMaterialRef.current.emissiveIntensity = 3.8;
+      } else {
+        grilleGlowMaterialRef.current.emissive.set(0x002244);
+        grilleGlowMaterialRef.current.emissiveIntensity = 0.5;
+      }
+      grilleGlowMaterialRef.current.needsUpdate = true;
+    }
+
     if (underglowLightRef.current) {
       underglowLightRef.current.intensity = config.headlightsOn
         ? config.driveMode === "sport"
           ? 4.5
-          : 3.0
+          : 3.5
         : 0;
       underglowLightRef.current.color.set(
         config.driveMode === "sport"
           ? 0xe21b22
           : config.driveMode === "warp"
           ? 0x00f0ff
-          : 0x0066b1
+          : 0x00f0ff
       );
     }
   }, [config.headlightsOn, config.driveMode]);
 
-  // Initialize Three.js scene & load authentic BMW 3D model
+  // Initialize Three.js scene & load authentic BMW in luxury studio
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
     const canvas = canvasRef.current;
@@ -173,16 +187,16 @@ export default function ThreeCarCanvas({
     // 1. Scene
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    scene.background = new THREE.Color(0x05070c);
-    scene.fog = new THREE.FogExp2(0x05070c, 0.035);
+    scene.background = new THREE.Color(0x040609);
+    scene.fog = new THREE.FogExp2(0x040609, 0.028);
 
     // 2. Camera
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
     cameraRef.current = camera;
-    camera.position.set(5.2, 2.2, 5.4);
-    camera.lookAt(0, 0.75, 0);
+    camera.position.set(3.6, 1.45, 3.8);
+    camera.lookAt(0, 0.72, 0.3);
 
-    // 3. Renderer attached directly to canvas element
+    // 3. Renderer with ACES Filmic tone mapping
     const renderer = new THREE.WebGLRenderer({
       canvas: canvas,
       antialias: true,
@@ -192,11 +206,11 @@ export default function ThreeCarCanvas({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
+    renderer.toneMappingExposure = 1.3;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
-    // 4. Photorealistic Studio HDRI Environment Reflection
+    // 4. HDRI Studio Environment
     const environment = new RoomEnvironment();
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
@@ -204,12 +218,12 @@ export default function ThreeCarCanvas({
     scene.environment = envTexture;
 
     // 5. Studio Lighting Rig
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
 
-    // Key front-top spotlight
-    const keySpot = new THREE.SpotLight(0xffffff, 5.0);
-    keySpot.position.set(6, 9, 6);
+    // Main Key front softbox light
+    const keySpot = new THREE.SpotLight(0xffffff, 4.5);
+    keySpot.position.set(4, 7, 5);
     keySpot.angle = Math.PI / 4;
     keySpot.penumbra = 0.6;
     keySpot.castShadow = true;
@@ -218,74 +232,173 @@ export default function ThreeCarCanvas({
     keySpot.shadow.mapSize.height = 2048;
     scene.add(keySpot);
 
-    // Rim cyan light
-    const rimCyan = new THREE.DirectionalLight(0x00f0ff, 2.2);
-    rimCyan.position.set(-6, 4, -6);
+    // Fill cyan rim light from back-left
+    const rimCyan = new THREE.DirectionalLight(0x00f0ff, 2.8);
+    rimCyan.position.set(-6, 5, -5);
     scene.add(rimCyan);
 
-    // Front blue fill
-    const fillBlue = new THREE.DirectionalLight(0x0044bb, 1.8);
-    fillBlue.position.set(-5, 3, 5);
+    // Warm ambient accent from luxury office side
+    const warmLoungeLight = new THREE.PointLight(0xffaa55, 1.8, 16);
+    warmLoungeLight.position.set(-7, 3, 2);
+    scene.add(warmLoungeLight);
+
+    // Subtle blue fill from front-right
+    const fillBlue = new THREE.DirectionalLight(0x0066cc, 1.5);
+    fillBlue.position.set(5, 3, 3);
     scene.add(fillBlue);
 
-    // Soft overhead light
-    const overheadLight = new THREE.PointLight(0xffffff, 3.0, 20);
-    overheadLight.position.set(0, 6, 0);
-    scene.add(overheadLight);
-
-    // Underglow neon ground light
-    const underglow = new THREE.PointLight(0x0066b1, 3.5, 7);
+    // Neon cyan ground underglow
+    const underglow = new THREE.PointLight(0x00f0ff, 3.5, 8);
     underglow.position.set(0, 0.15, 0);
     underglowLightRef.current = underglow;
     scene.add(underglow);
 
-    // 6. Showroom Floor & Stage
-    const stageRadius = 5.4;
-    const stageGeo = new THREE.CylinderGeometry(stageRadius, stageRadius + 0.35, 0.1, 64);
-    const stageMat = new THREE.MeshStandardMaterial({
-      color: 0x090e17,
-      roughness: 0.15,
-      metalness: 0.88,
-    });
-    const stage = new THREE.Mesh(stageGeo, stageMat);
-    stage.position.y = -0.05;
-    stage.receiveShadow = true;
-    scene.add(stage);
+    // 6. BUILD LUXURY ARCHITECTURAL SHOWROOM (Matching Reference Image)
+    const studioGroup = new THREE.Group();
 
-    // Concentric glowing stage ring 1
-    const ring1Geo = new THREE.RingGeometry(stageRadius - 0.08, stageRadius, 64);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, side: THREE.DoubleSide });
-    const ring1 = new THREE.Mesh(ring1Geo, ringMat);
-    ring1.rotation.x = -Math.PI / 2;
-    ring1.position.y = 0.002;
-    scene.add(ring1);
-
-    // Concentric glowing stage ring 2
-    const ring2Geo = new THREE.RingGeometry(3.6, 3.66, 64);
-    const ring2 = new THREE.Mesh(ring2Geo, ringMat);
-    ring2.rotation.x = -Math.PI / 2;
-    ring2.position.y = 0.002;
-    scene.add(ring2);
-
-    // Outer Floor
-    const floorGeo = new THREE.PlaneGeometry(60, 60);
+    // A. Dark Polished Epoxy Concrete Floor
+    const floorGeo = new THREE.PlaneGeometry(50, 50);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x04060a,
-      roughness: 0.28,
-      metalness: 0.75,
+      color: 0x070a0f,
+      roughness: 0.14,
+      metalness: 0.9,
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -0.11;
+    floor.position.y = 0;
     floor.receiveShadow = true;
-    scene.add(floor);
+    studioGroup.add(floor);
 
-    // Showroom grid
-    const grid = new THREE.GridHelper(40, 40, 0x002f6c, 0x08101e);
-    grid.position.y = -0.1;
-    scene.add(grid);
+    // B. Floor Projected Typographic Graphics: "BMW VISION M" & "///M CONCEPT"
+    const floorCanvas = document.createElement("canvas");
+    floorCanvas.width = 1024;
+    floorCanvas.height = 512;
+    const fctx = floorCanvas.getContext("2d")!;
+    fctx.clearRect(0, 0, 1024, 512);
 
-    // Realistic Contact Shadow beneath vehicle
+    // Left text: BMW VISION M
+    fctx.font = "bold 44px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    fctx.fillStyle = "rgba(230, 245, 255, 0.85)";
+    fctx.fillText("BMW VISION M", 80, 280);
+
+    // Right text: ///M CONCEPT
+    // Draw M stripes
+    const barW = 10;
+    const barH = 34;
+    const barY = 246;
+    fctx.save();
+    fctx.transform(1, 0, -0.28, 1, 0, 0); // slant M stripes
+    fctx.fillStyle = "#0066b1"; // Light Blue
+    fctx.fillRect(630, barY, barW, barH);
+    fctx.fillStyle = "#002f6c"; // Dark Blue
+    fctx.fillRect(644, barY, barW, barH);
+    fctx.fillStyle = "#e21b22"; // Red
+    fctx.fillRect(658, barY, barW, barH);
+    fctx.restore();
+
+    fctx.font = "bold 44px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    fctx.fillStyle = "#ffffff";
+    fctx.fillText("M CONCEPT", 680, 280);
+
+    const floorDecalTex = new THREE.CanvasTexture(floorCanvas);
+    const floorDecalGeo = new THREE.PlaneGeometry(5.2, 2.6);
+    const floorDecalMat = new THREE.MeshBasicMaterial({
+      map: floorDecalTex,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const floorDecal = new THREE.Mesh(floorDecalGeo, floorDecalMat);
+    floorDecal.rotation.x = -Math.PI / 2;
+    floorDecal.position.set(-0.15, 0.003, 2.5);
+    studioGroup.add(floorDecal);
+
+    // C. Overhead Suspended Geometric Cyan Neon Tube Beams (Matching Reference Image)
+    const ceilingGroup = new THREE.Group();
+    ceilingLightsRef.current = ceilingGroup;
+
+    const neonMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    const beamRadius = 0.04;
+
+    // Helper to create glowing linear light bar
+    const createNeonBar = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => {
+      const p1 = new THREE.Vector3(x1, y1, z1);
+      const p2 = new THREE.Vector3(x2, y2, z2);
+      const dist = p1.distanceTo(p2);
+      const barGeo = new THREE.CylinderGeometry(beamRadius, beamRadius, dist, 16);
+      const bar = new THREE.Mesh(barGeo, neonMat);
+
+      bar.position.copy(p1).add(p2).multiplyScalar(0.5);
+      bar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+      ceilingGroup.add(bar);
+
+      const light = new THREE.PointLight(0x00f0ff, 1.8, 8);
+      light.position.copy(bar.position);
+      ceilingGroup.add(light);
+    };
+
+    // Overhead Outer Rectangular Light Loop (visible in camera frame at y = 2.9)
+    createNeonBar(-3.8, 2.85, -4.2, 3.8, 2.85, -4.2);
+    createNeonBar(3.8, 2.85, -4.2, 3.8, 2.85, 3.8);
+    createNeonBar(3.8, 2.85, 3.8, -3.8, 2.85, 3.8);
+    createNeonBar(-3.8, 2.85, 3.8, -3.8, 2.85, -4.2);
+
+    // Upper Accent Rectangular Light Loop (y = 3.6)
+    createNeonBar(-2.5, 3.6, -2.5, 2.5, 3.6, -2.5);
+    createNeonBar(2.5, 3.6, -2.5, 2.5, 3.6, 2.8);
+    createNeonBar(2.5, 3.6, 2.8, -2.5, 3.6, 2.8);
+    createNeonBar(-2.5, 3.6, 2.8, -2.5, 3.6, -2.5);
+
+    studioGroup.add(ceilingGroup);
+
+    // D. Architectural Showroom Background Walls & Glass Partitions
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x141822, metalness: 0.85, roughness: 0.35 });
+    const glassPartitionMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0d1522,
+      metalness: 0.3,
+      roughness: 0.08,
+      transmission: 0.8,
+      transparent: true,
+      opacity: 0.65,
+    });
+
+    // Back architectural structural columns (I-beams)
+    [-6, -2, 2, 6].forEach((xPos) => {
+      const colGeo = new THREE.BoxGeometry(0.35, 8, 0.35);
+      const col = new THREE.Mesh(colGeo, steelMat);
+      col.position.set(xPos, 4, -7.5);
+      studioGroup.add(col);
+    });
+
+    // Horizontal ceiling cross-girders
+    const girderGeo = new THREE.BoxGeometry(16, 0.3, 0.3);
+    const girder1 = new THREE.Mesh(girderGeo, steelMat);
+    girder1.position.set(0, 6.2, -7.5);
+    studioGroup.add(girder1);
+
+    // Tinted Glass Office Partition Wall on the left (as in reference image)
+    const glassWallGeo = new THREE.BoxGeometry(0.08, 5, 12);
+    const glassWall = new THREE.Mesh(glassWallGeo, glassPartitionMat);
+    glassWall.position.set(-6.5, 2.5, 0);
+    studioGroup.add(glassWall);
+
+    // Black frame for glass wall
+    const wallFrameGeo = new THREE.BoxGeometry(0.12, 0.12, 12);
+    const wallFrameTop = new THREE.Mesh(wallFrameGeo, steelMat);
+    wallFrameTop.position.set(-6.5, 5.0, 0);
+    studioGroup.add(wallFrameTop);
+
+    // Ambient illuminated back wall panels (right side in reference photo)
+    const backPanelGeo = new THREE.PlaneGeometry(3.5, 4.5);
+    const backPanelMat = new THREE.MeshBasicMaterial({ color: 0x0a203c });
+    const backPanel = new THREE.Mesh(backPanelGeo, backPanelMat);
+    backPanel.position.set(5.5, 2.6, -7.4);
+    studioGroup.add(backPanel);
+
+    const backPanelLight = new THREE.PointLight(0x0088ff, 2.0, 8);
+    backPanelLight.position.set(5.5, 2.6, -7.0);
+    studioGroup.add(backPanelLight);
+
+    // Soft Contact Shadow Plane directly beneath the vehicle
     const shadowGeo = new THREE.PlaneGeometry(5.4, 2.8);
     const shadowCanvas = document.createElement("canvas");
     shadowCanvas.width = 256;
@@ -293,7 +406,7 @@ export default function ThreeCarCanvas({
     const sctx = shadowCanvas.getContext("2d")!;
     const grad = sctx.createRadialGradient(128, 128, 10, 128, 128, 128);
     grad.addColorStop(0, "rgba(0,0,0,0.92)");
-    grad.addColorStop(0.5, "rgba(0,0,0,0.5)");
+    grad.addColorStop(0.5, "rgba(0,0,0,0.48)");
     grad.addColorStop(1, "rgba(0,0,0,0)");
     sctx.fillStyle = grad;
     sctx.fillRect(0, 0, 256, 256);
@@ -305,24 +418,26 @@ export default function ThreeCarCanvas({
     });
     const shadowPlane = new THREE.Mesh(shadowGeo, shadowMat);
     shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.position.y = 0.01;
-    scene.add(shadowPlane);
+    shadowPlane.position.y = 0.002;
+    studioGroup.add(shadowPlane);
+
+    scene.add(studioGroup);
 
     // 7. Ambient Micro-Dust Particles
-    const dustCount = 200;
+    const dustCount = 180;
     const dustGeo = new THREE.BufferGeometry();
     const dustPositions = new Float32Array(dustCount * 3);
     for (let i = 0; i < dustCount * 3; i += 3) {
       dustPositions[i] = (Math.random() - 0.5) * 16;
-      dustPositions[i + 1] = Math.random() * 6;
+      dustPositions[i + 1] = Math.random() * 5 + 0.2;
       dustPositions[i + 2] = (Math.random() - 0.5) * 16;
     }
     dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
     const dustMat = new THREE.PointsMaterial({
       color: 0x00f0ff,
-      size: 0.035,
+      size: 0.03,
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.5,
     });
     const dust = new THREE.Points(dustGeo, dustMat);
     scene.add(dust);
@@ -378,6 +493,18 @@ export default function ThreeCarCanvas({
         carModel.position.y = -box.min.y * targetScale; // place wheels directly onto floor y = 0
         carModel.position.z = -center.z * targetScale;
 
+        // Create unified luxury automotive body paint shader
+        const unifiedBodyPaint = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color(config.paintColor),
+          metalness: 0.9,
+          roughness: 0.14,
+          clearcoat: 1.0,
+          clearcoatRoughness: 0.04,
+          reflectivity: 0.98,
+          envMapIntensity: 2.8,
+        });
+        carBodyMaterialsRef.current.push(unifiedBodyPaint);
+
         // Traverse meshes and configure materials
         carModel.traverse((child: any) => {
           if (child.isMesh) {
@@ -387,40 +514,55 @@ export default function ThreeCarCanvas({
             const mat = child.material;
             const matName = (mat?.name || "").toLowerCase();
 
-            // A. Car Body Paint (hood, doors, fenders, quarter panels, bumpers)
+            // A. Car Body Paint - MUST catch all exterior body panels!
+            // Including Object_8 (Mesheswhite41Mtl), Object_23 (Meshesbody151Mtl), livery, ff41, zx1
             if (
               matName.includes("body") ||
               matName.includes("white41") ||
               matName.includes("livery") ||
               matName.includes("zx1") ||
-              matName.includes("ff41")
+              matName.includes("ff41") ||
+              child.name === "Object_8" ||
+              child.name === "Object_23" ||
+              child.name === "Object_28" ||
+              child.name === "Object_30"
             ) {
-              const bodyPaint = new THREE.MeshPhysicalMaterial({
-                color: new THREE.Color(config.paintColor),
-                metalness: 0.88,
-                roughness: 0.16,
-                clearcoat: 1.0,
-                clearcoatRoughness: 0.05,
-                reflectivity: 0.95,
-                envMapIntensity: 2.4,
-              });
-              child.material = bodyPaint;
-              carBodyMaterialsRef.current.push(bodyPaint);
+              child.material = unifiedBodyPaint;
             }
-            // B. Tinted Glass & Windows
-            else if (matName.includes("window") || matName.includes("glass")) {
+            // B. Iconic Kidney Grille with Neon Cyan Contour Glow (Matching Reference Image)
+            else if (matName.includes("grill") || child.name === "Object_5") {
+              const grilleMat = new THREE.MeshStandardMaterial({
+                color: 0x00f0ff,
+                emissive: new THREE.Color(0x00f0ff),
+                emissiveIntensity: 4.8,
+                metalness: 0.8,
+                roughness: 0.1,
+              });
+              child.material = grilleMat;
+              grilleGlowMaterialRef.current = grilleMat;
+            }
+            // Radiator behind grille (dark metallic black)
+            else if (matName.includes("raidiator") || matName.includes("radiator") || child.name === "Object_9") {
+              child.material = new THREE.MeshStandardMaterial({
+                color: 0x05070a,
+                metalness: 0.9,
+                roughness: 0.6,
+              });
+            }
+            // C. Tinted Glass & Windows
+            else if (matName.includes("window") || matName.includes("glass") || child.name === "Object_25") {
               child.material = new THREE.MeshPhysicalMaterial({
-                color: 0x09101c,
+                color: 0x08101a,
                 metalness: 0.15,
                 roughness: 0.04,
                 transmission: 0.88,
                 transparent: true,
                 opacity: 0.8,
-                envMapIntensity: 2.5,
+                envMapIntensity: 2.8,
               });
             }
-            // C. Brake Calipers
-            else if (matName.includes("caliper")) {
+            // D. Brake Calipers
+            else if (matName.includes("caliper") || child.name === "Object_32") {
               const calMat = new THREE.MeshStandardMaterial({
                 color: new THREE.Color(config.caliperColor),
                 metalness: 0.85,
@@ -430,49 +572,62 @@ export default function ThreeCarCanvas({
               child.material = calMat;
               caliperMaterialsRef.current.push(calMat);
             }
-            // D. Alloy Rims
-            else if (matName.includes("rim") || matName.includes("wheel")) {
+            // E. Alloy Rims
+            else if (matName.includes("rim") || matName.includes("wheel") || child.name === "Object_33" || child.name === "Object_34") {
               const rimMat = new THREE.MeshStandardMaterial({
                 color: new THREE.Color(config.rimColor),
-                metalness: 0.92,
-                roughness: 0.18,
-                envMapIntensity: 2.2,
+                metalness: 0.94,
+                roughness: 0.16,
+                envMapIntensity: 2.5,
               });
               child.material = rimMat;
               rimMaterialsRef.current.push(rimMat);
             }
-            // E. Headlights & LED DRLs
-            else if (matName.includes("headlight") || matName.includes("led") || matName.includes("light51")) {
+            // F. Laserlights & LED DRLs (Matching Reference Image)
+            else if (matName.includes("headlight") || matName.includes("led") || child.name === "Object_13" || child.name === "Object_22") {
               const headMat = new THREE.MeshStandardMaterial({
                 color: 0xffffff,
-                emissive: new THREE.Color(config.headlightsOn ? 0x00f0ff : 0x000000),
-                emissiveIntensity: config.headlightsOn ? 3.5 : 0,
+                emissive: new THREE.Color(0x00f0ff),
+                emissiveIntensity: 4.2,
                 roughness: 0.1,
-                metalness: 0.8,
+                metalness: 0.7,
               });
               child.material = headMat;
               headlightMaterialsRef.current.push(headMat);
             }
-            // F. Taillights
-            else if (matName.includes("redlight") || matName.includes("tail")) {
+            // G. Taillights
+            else if (matName.includes("redlight") || matName.includes("tail") || child.name === "Object_17" || child.name === "Object_29") {
               child.material = new THREE.MeshStandardMaterial({
                 color: 0xff1028,
                 emissive: new THREE.Color(0xff1525),
-                emissiveIntensity: 2.2,
+                emissiveIntensity: 2.4,
                 roughness: 0.18,
               });
             }
-            // G. Carbon Fiber & Trims (Grille, Diffuser, Splitter)
-            else if (matName.includes("black") || matName.includes("grill") || matName.includes("pillar")) {
+            // H. Carbon Fiber & Black Trims (Roof, Pillars, Mirrors, Diffuser)
+            else if (matName.includes("black") || matName.includes("pillar") || child.name === "Object_4" || child.name === "Object_11" || child.name === "Object_24") {
               child.material = new THREE.MeshStandardMaterial({
-                color: 0x111317,
-                metalness: 0.65,
-                roughness: 0.32,
-                envMapIntensity: 1.5,
+                color: 0x0f1115,
+                metalness: 0.7,
+                roughness: 0.3,
+                envMapIntensity: 1.8,
               });
             }
           }
         });
+
+        // Add 2 real Projector Headlight Spotlights shining forward
+        const headSpotL = new THREE.SpotLight(0x00f0ff, 4.5, 20, Math.PI / 6, 0.4);
+        headSpotL.position.set(-0.75, 0.7, 2.3);
+        headSpotL.target.position.set(-1.0, 0, 10);
+        carModel.add(headSpotL);
+        carModel.add(headSpotL.target);
+
+        const headSpotR = new THREE.SpotLight(0x00f0ff, 4.5, 20, Math.PI / 6, 0.4);
+        headSpotR.position.set(0.75, 0.7, 2.3);
+        headSpotR.target.position.set(1.0, 0, 10);
+        carModel.add(headSpotR);
+        carModel.add(headSpotR.target);
 
         scene.add(carModel);
         setIsLoading(false);
@@ -502,8 +657,8 @@ export default function ThreeCarCanvas({
       const dy = e.clientY - prevMouse.current.y;
       prevMouse.current = { x: e.clientX, y: e.clientY };
 
-      orbitSpherical.current.theta -= dx * 0.006;
-      orbitSpherical.current.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.04, orbitSpherical.current.phi - dy * 0.005));
+      orbitSpherical.current.theta -= dx * 0.0055;
+      orbitSpherical.current.phi = Math.max(0.12, Math.min(Math.PI / 2 - 0.04, orbitSpherical.current.phi - dy * 0.0045));
 
       const { radius, theta, phi } = orbitSpherical.current;
       targetCamPos.current.x = radius * Math.sin(phi) * Math.sin(theta);
@@ -515,11 +670,11 @@ export default function ThreeCarCanvas({
       isDragging.current = false;
       userInteractTimeout.current = setTimeout(() => {
         isUserInteracting.current = false;
-      }, 5000);
+      }, 6000);
     };
 
     const handleWheel = (e: WheelEvent) => {
-      orbitSpherical.current.radius = Math.max(3.2, Math.min(12.0, orbitSpherical.current.radius + e.deltaY * 0.004));
+      orbitSpherical.current.radius = Math.max(2.8, Math.min(10.0, orbitSpherical.current.radius + e.deltaY * 0.004));
       const { radius, theta, phi } = orbitSpherical.current;
       targetCamPos.current.x = radius * Math.sin(phi) * Math.sin(theta);
       targetCamPos.current.y = radius * Math.cos(phi);
@@ -542,7 +697,7 @@ export default function ThreeCarCanvas({
     };
     window.addEventListener("resize", handleResize);
 
-    // 11. Animation Loop with performance.now()
+    // 11. Animation Render Loop
     let animationFrameId: number;
     let lastTime = performance.now();
 
@@ -552,14 +707,14 @@ export default function ThreeCarCanvas({
       const delta = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
 
-      // Camera Lerp
-      camera.position.lerp(targetCamPos.current, 0.06);
-      currentCamLook.current.lerp(targetCamLook.current, 0.06);
+      // Smooth Camera Lerp
+      camera.position.lerp(targetCamPos.current, 0.055);
+      currentCamLook.current.lerp(targetCamLook.current, 0.055);
       camera.lookAt(currentCamLook.current);
 
-      // Auto Turntable Orbit when user is idle in showcase mode
+      // Gentle subtle turntable breathe if idle
       if (!isUserInteracting.current && config.cameraPreset === "showcase") {
-        orbitSpherical.current.theta += delta * 0.12;
+        orbitSpherical.current.theta += delta * 0.08;
         const { radius, theta, phi } = orbitSpherical.current;
         targetCamPos.current.x = radius * Math.sin(phi) * Math.sin(theta);
         targetCamPos.current.y = radius * Math.cos(phi);
@@ -569,12 +724,12 @@ export default function ThreeCarCanvas({
       // Floating dust particles
       const dPositions = dustGeo.attributes.position.array as Float32Array;
       for (let i = 1; i < dustCount * 3; i += 3) {
-        dPositions[i] += delta * 0.15;
-        if (dPositions[i] > 6) dPositions[i] = 0.1;
+        dPositions[i] += delta * 0.12;
+        if (dPositions[i] > 5) dPositions[i] = 0.2;
       }
       dustGeo.attributes.position.needsUpdate = true;
 
-      // Warp Hyperspace Particles
+      // Warp Mode Hyperspace Particles
       if (warpParticlesRef.current) {
         const wMat = warpParticlesRef.current.material as THREE.PointsMaterial;
         const targetOpacity = isWarpSpeed ? 0.9 : 0;
@@ -662,10 +817,10 @@ export default function ThreeCarCanvas({
           />
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: "1.1rem", fontWeight: 800, letterSpacing: "0.1em", color: "#ffffff", marginBottom: "4px" }}>
-              LOADING REAL 3D BMW M4 COMPETITION
+              INITIALIZING BMW VISION M STUDIO
             </div>
             <div style={{ fontSize: "0.85rem", color: "var(--bmw-cyan)", fontWeight: 600 }}>
-              {loadProgress > 0 ? `${loadProgress}% ASSETS INITIALIZED` : "PREPARING STUDIO ENVIRONMENT..."}
+              {loadProgress > 0 ? `${loadProgress}% ASSETS INITIALIZED` : "PREPARING ARCHITECTURAL LIGHTING..."}
             </div>
           </div>
         </div>
